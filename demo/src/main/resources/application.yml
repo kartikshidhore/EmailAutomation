@@ -1,0 +1,51 @@
+# server:
+#   error:
+#     include-message: always
+#     include-binding-errors: always
+#     include-stacktrace: always
+
+# spring:
+#   datasource:
+#     url: jdbc:postgresql://localhost:5432/registration
+#     username: your_db_username        # Replace with your PostgreSQL username
+#     password: your_db_password        # Replace with your PostgreSQL password
+#     driver-class-name: org.postgresql.Driver
+
+#   jpa:
+#     hibernate:
+#       ddl-auto: create-drop           #For dev only! Use 'update' or 'validate' in prod
+#     properties:
+#       hibernate:
+#         dialect: org.hibernate.dialect.PostgreSQLDialect
+#         format_sql: true
+#         use_sql_comments: true
+#         show_sql: true
+
+# # Optional: to fix time zone issues with PostgreSQL (recommended)
+#   jackson:
+#     time-zone: UTC
+spring:
+  mail:
+    host: smtp.office365.com
+    port: 587
+    username: dummy@outlook.com
+    password: dummy_password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  datasource:
+    url: jdbc:postgresql://localhost:5432/email_app
+    username: your_postgres_user
+    password: your_postgres_password
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+server:
+  port: 8080

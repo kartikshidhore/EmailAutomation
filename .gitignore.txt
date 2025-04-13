@@ -1,0 +1,52 @@
+# ===== General OS/System Files =====
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.bak
+*.tmp
+
+# ===== VSCode =====
+.vscode/
+
+# ===== Python Frontend (PyQt) =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+.env
+.venv/
+env/
+myenv/
+frontend/__pycache__/
+frontend/*.pyc
+frontend/.env
+frontend/.venv/
+frontend/*.spec
+
+# ===== Java Backend (Spring Boot - Maven) =====
+demo/target/
+demo/.mvn/
+demo/mvnw
+demo/mvnw.cmd
+demo/*.iml
+demo/*.log
+
+# IntelliJ / Eclipse / NetBeans
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# ===== Sensitive Files =====
+application.yml
+credentials.json
+*.pem
+*.key
+*.crt
+
+# ===== Excel/Upload Cache (Optional) =====
+*.xlsx
+*.csv
+uploaded_files/
