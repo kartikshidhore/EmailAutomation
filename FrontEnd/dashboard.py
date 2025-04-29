@@ -3,14 +3,16 @@ import pandas as pd
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QFileDialog, QVBoxLayout,
     QTableWidget, QTableWidgetItem, QCheckBox, QWidget, QHBoxLayout, QHeaderView,
-    QCheckBox, QAbstractItemView
+    QAbstractItemView, QMessageBox
 )
 from PyQt6.QtCore import Qt
-
+from email_customizer import EmailCustomizer
+from api_client import LoginUser
 
 class Dashboard(QMainWindow):
-    def __init__(self):
+    def __init__(self, api_client):
         super().__init__()
+        self.api = api_client  # Save the API client with JWT token
         self.setWindowTitle("Dashboard")
         self.setGeometry(100, 100, 1000, 600)
 
@@ -45,16 +47,26 @@ class Dashboard(QMainWindow):
                 self.data = pd.read_excel(file_path)
 
                 # Drop completely empty rows and columns
-                self.data.dropna(axis=0, how='all', inplace=True)  # Drop empty rows
-                self.data.dropna(axis=1, how='all', inplace=True)  # Drop empty columns
+                self.data.dropna(axis=0, how='all', inplace=True)
+                self.data.dropna(axis=1, how='all', inplace=True)
 
-                # Drop unnamed columns (e.g., "Unnamed: 3", "Unnamed: 4")
-                self.data = self.data.loc[:, ~self.data.columns.str.contains('^Unnamed')]
+                # Drop unnamed columns
+                self.data = self.data.loc[:, ~self.data.columns.str.contains('^Unnamed', case=False)]
+
+                # Validate required columns
+                required_cols = ['email', 'name']
+                actual_cols = [col.strip().lower() for col in self.data.columns]
+
+                if not any(col in actual_cols for col in ['email', 'emails', 'e-mails']):
+                    raise ValueError("No 'Email' column found in Excel file.")
+
+                if not any(col in actual_cols for col in ['name', 'names']):
+                    raise ValueError("No 'Name' column found in Excel file.")
 
                 self.populate_table()
-            except Exception as e:
-                print("Error reading Excel file:", e)
 
+            except Exception as e:
+                QMessageBox.warning(self, "File Error", f"Error reading Excel file: {str(e)}")
 
     def populate_table(self):
         if self.data is None:
@@ -63,12 +75,12 @@ class Dashboard(QMainWindow):
         num_rows = len(self.data)
         num_cols = len(self.data.columns)
         self.table.setRowCount(num_rows)
-        self.table.setColumnCount(num_cols + 1)  # +1 for checkbox column
+        self.table.setColumnCount(num_cols + 1)  # +1 for checkbox
         self.table.setHorizontalHeaderLabels(["Select"] + list(self.data.columns))
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 
-        self.row_checkboxes.clear()  # Reset previous checkboxes
+        self.row_checkboxes.clear()
 
         for row_index in range(num_rows):
             checkbox = QCheckBox()
@@ -92,154 +104,49 @@ class Dashboard(QMainWindow):
             checkbox.setChecked(state)
 
     def on_row_checkbox_changed(self):
-        # Update "Select All" checkbox based on individual row states
         all_checked = all(cb.isChecked() for cb in self.row_checkboxes)
         self.select_all_checkbox.blockSignals(True)
         self.select_all_checkbox.setChecked(all_checked)
         self.select_all_checkbox.blockSignals(False)
 
     def process_selected_rows(self):
+        if self.data is None:
+            QMessageBox.warning(self, "No Data", "Please upload an Excel file first.")
+            return
+
         selected_users = []
+        email_col_index = self.get_column_index('email')
+        name_col_index = self.get_column_index('name')
+
+        if email_col_index == -1 or name_col_index == -1:
+            QMessageBox.warning(self, "Error", "Name or Email columns not found properly.")
+            return
+
         for i, checkbox in enumerate(self.row_checkboxes):
             if checkbox.isChecked():
-                row_data = [self.table.item(i, j).text() for j in range(1, self.table.columnCount())]
-                selected_users.append(row_data)
+                name = self.table.item(i, name_col_index + 1).text()
+                email = self.table.item(i, email_col_index + 1).text()
+                selected_users.append((name, email))
 
-        print("Selected Users:", selected_users)
-        
+        if not selected_users:
+            QMessageBox.warning(self, "Selection Error", "No users selected.")
+            return
+
+        self.email_customizer = EmailCustomizer(self.api, selected_users)
+        self.email_customizer.show()
+        self.close()
+
+    def get_column_index(self, search_key):
+        for i, col in enumerate(self.data.columns):
+            col_normalized = col.strip().lower().replace("-", "").replace("_", "")
+            search_key_normalized = search_key.strip().lower().replace("-", "").replace("_", "")
+            if search_key_normalized in col_normalized:
+                return i
+        return -1
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = Dashboard()
+    api = LoginUser()  # Normally login() would be called first
+    window = Dashboard(api)
     window.show()
     sys.exit(app.exec())
-
-# import sys
-# from PyQt6.QtWidgets import (
-#     QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QFileDialog,
-#     QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QHBoxLayout,
-#     QMessageBox, QAbstractItemView
-# )
-# from PyQt6.QtCore import Qt
-# import pandas as pd
-# # from email_customizer import EmailCustomizer
-
-# class Dashboard(QWidget):
-#     def __init__(self):
-#         super().__init__()
-#         # self.main = main
-#         self.setWindowTitle("Dashboard")
-#         self.setGeometry(200, 100, 1000, 600)
-
-#         self.layout = QVBoxLayout(self)
-
-#         self.upload_button = QPushButton("Upload Excel File")
-#         self.upload_button.clicked.connect(self.import_excel)
-#         self.layout.addWidget(self.upload_button)
-
-#         self.select_all_checkbox = QCheckBox("Select All")
-#         self.select_all_checkbox.stateChanged.connect(self.toggle_all_checkboxes)
-#         self.layout.addWidget(self.select_all_checkbox)
-
-#         self.table = QTableWidget()
-#         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-#         self.layout.addWidget(self.table)
-
-#         self.next_button = QPushButton("Next")
-#         self.next_button.clicked.connect(self.proceed_next)
-#         self.layout.addWidget(self.next_button)
-
-#         # Internal state
-#         self.data = pd.DataFrame()
-#         self.checkbox_refs = []
-#         self.name_col = None
-#         self.email_col = None
-
-#     def import_excel(self):
-#         file_path, _ = QFileDialog.getOpenFileName(self, "Open Excel File", "", "Excel Files (*.xlsx *.xls)")
-#         if not file_path:
-#             return
-#         try:
-#             df = pd.read_excel(file_path)
-#             df = df.astype(str).apply(lambda x: x.str.strip())
-
-#             self.data = df.copy()
-#             self.name_col, self.email_col = self.identify_columns(df.columns)
-
-#             if not self.name_col or not self.email_col:
-#                 raise ValueError("Could not detect 'Name' and 'Email' columns.")
-
-#             self.populate_table()
-
-#         except Exception as e:
-#             QMessageBox.critical(self, "Error", str(e))
-
-#     def identify_columns(self, columns):
-#         name_keywords = ["name", "full name"]
-#         email_keywords = ["email", "e-mail"]
-
-#         name_col = None
-#         email_col = None
-
-#         for col in columns:
-#             col_lower = col.lower()
-#             if not name_col and any(keyword in col_lower for keyword in name_keywords):
-#                 name_col = col
-#             if not email_col and any(keyword in col_lower for keyword in email_keywords):
-#                 email_col = col
-
-#         return name_col, email_col
-
-#     def populate_table(self):
-#         df = self.data
-#         self.table.setRowCount(len(df))
-#         self.table.setColumnCount(len(df.columns) + 1)
-
-#         headers = ["Select"] + list(df.columns)
-#         self.table.setHorizontalHeaderLabels(headers)
-#         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-
-#         self.checkbox_refs.clear()
-
-#         for row in range(len(df)):
-#             checkbox = QCheckBox()
-#             self.table.setCellWidget(row, 0, checkbox)
-#             self.checkbox_refs.append(checkbox)
-
-#             for col in range(len(df.columns)):
-#                 item = QTableWidgetItem(str(df.iat[row, col]))
-#                 item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-#                 self.table.setItem(row, col + 1, item)
-
-#     def toggle_all_checkboxes(self, state):
-#         is_checked = state == Qt.CheckState.Checked
-#         for checkbox in self.checkbox_refs:
-#             checkbox.setChecked(is_checked)
-
-#         self.table.viewport().update()
-
-#     def proceed_next(self):
-#         selected_users = []
-
-#         for row, checkbox in enumerate(self.checkbox_refs):
-#             if checkbox.isChecked():
-#                 try:
-#                     name = self.data.at[row, self.name_col].strip()
-#                     email = self.data.at[row, self.email_col].strip()
-#                     if name and email and email.lower() != "nan":
-#                         selected_users.append([name, email])
-#                 except Exception as e:
-#                     print(f"Row {row} error: {e}")
-
-#         print("Selected Users:", selected_users)
-#         self.close()
-#         # self.show_emailCustom = EmailCustomizer()
-#         # self.show_emailCustom.show()
-
-# if __name__ == "__main__":
-#     app = QApplication(sys.argv)
-#     window = Dashboard()
-#     window.show()
-#     sys.exit(app.exec())
-
-

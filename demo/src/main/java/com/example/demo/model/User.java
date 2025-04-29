@@ -1,8 +1,10 @@
-package com.model;
+package com.example.demo.model;
 
 import jakarta.persistence.*;
 
+
 @Entity
+@Table(name = "users")
 public class User {
 
     @Id
@@ -12,7 +14,7 @@ public class User {
     @Column(unique = true)
     private String email;
 
-    private String password;
+    private String smtpPassword; // Only this password used now
 
     // Getters & setters
     public Long getId() {
@@ -31,11 +33,12 @@ public class User {
         this.email = email;
     }
 
-    public String getPassword() {
-        return password;
+    public String getSmtpPassword() {
+        return smtpPassword;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setSmtpPassword(String smtpPassword) {
+        this.smtpPassword = smtpPassword;
     }
 }
+
