@@ -60,7 +60,11 @@
     ```
 3. Navigate to Frontend folder.
 4. Run:
-    ```bash
+   ```bash
+   python main.py
+   ```
+    or
+   ```bash
     python login.py
     ```
 
